@@ -78,15 +78,30 @@ wenlv --list                              # 列出全部案由
 
 ## 支持哪些案由
 
-| 案由 | 请求权基础 | 要件事实 | 引用核验 |
-|---|---|---|---|
-| `private_lending.principal` | 出借人请求借款人返还本金 | 7 项 | 7/7 |
-| `labor.illegal_dismissal` | 劳动者请求违法解除赔偿金 | 6 项 | 8/8 |
-| `sale.buyer_payment` | 出卖人请求买受人支付价款 | 6 项 | 8/8 |
-| `marriage.property_division` | 离婚时请求分割夫妻共同财产 | 7 项 | 6/6 |
-| `traffic.personal_injury` | 交通事故受害人请求人身损害赔偿 | 6 项 | 6/6 |
+| 案由 | 请求权基础 | 要件事实 |
+|---|---|---|
+| `private_lending.principal` | 出借人请求借款人返还本金 | 7 项 |
+| `labor.illegal_dismissal` | 劳动者请求违法解除赔偿金 | 6 项 |
+| `labor.unpaid_wages` | 劳动者请求支付拖欠工资及加班费 | 6 项 |
+| `sale.buyer_payment` | 出卖人请求买受人支付价款 | 6 项 |
+| `lease.deposit_refund` | 承租人请求返还租赁押金 | 5 项 |
+| `consumer.triple_damages` | 消费者请求退款并三倍赔偿 | 5 项 |
+| `marriage.property_division` | 离婚时请求分割夫妻共同财产 | 7 项 |
+| `family.child_support` | 子女请求父母支付抚养费 | 5 项 |
+| `inheritance.division` | 继承人请求分割遗产 | 6 项 |
+| `traffic.personal_injury` | 交通事故受害人请求人身损害赔偿 | 6 项 |
 
-合计 31 条法条引用（跨案由重复的只算一次），全部能回到官方源核到原文。`python tools/check_coverage.py` 可复现。
+十个案由合计 **46 条法条引用**（跨案由重复的只算一次），全部能回到官方源核到原文。`python tools/check_coverage.py` 可复现。
+
+一句话就能匹配到案由：
+
+```
+"老板拖欠工资三个月"   → labor.unpaid_wages
+"房东不退押金"        → lease.deposit_refund
+"网购买到假货"        → consumer.triple_damages
+"离婚后前夫不给抚养费"  → family.child_support
+"兄弟争遗产"          → inheritance.division
+```
 
 ## 三道关
 
@@ -169,7 +184,7 @@ elements:
 说清楚，比藏起来有用。
 
 - **判例不在覆盖范围内。** 裁判文书网不允许批量抓取，开源项目能合法自带的只有最高人民法院指导性案例、公报案例和各地法院典型案例，量级几千份，不是全量库。所以本项目只做法条核验，不做类案推送。这是设计取舍，不是遗漏。
-- **只覆盖五个请求权基础。** 真实纠纷远不止这些，覆盖面交给人来扩展。
+- **只覆盖十个请求权基础。** 真实纠纷远不止这些，覆盖面交给人来扩展。
 - **案由匹配是关键词打分，不是语义理解。** 匹配不上或最高分并列时，列出全部案由让你自己选，不瞎猜。
 - **意见是模板 + 事实驱动的，不是模型写的。** 好处是稳定、可复现、不会编；代价是不会像律师那样针对个案特殊之处做临场分析。这正是它只做"流程和依据"、把"判断"留给人的原因。
 - **依赖官方库在线可用。** 官方库不可用时核验返回 error 并**判为不通过**——宁可不出结论，也不出没核过的结论。
