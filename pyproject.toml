@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wenlv"
+version = "0.1.0"
+description = "先把事实问清，再谈法律：把「不许臆造」写成代码约束的中文法律咨询引擎"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "wenlv contributors" }]
+keywords = ["law", "legal", "china", "rag", "citation-verification"]
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+wenlv = "wenlv.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["wenlv*"]

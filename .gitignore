@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# 抓下来的原始响应，属于本地调试产物，不入库
+data/raw/
+data/cache/
+
+.DS_Store
+.idea/
+.vscode/
