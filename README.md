@@ -1,5 +1,8 @@
 # 问律 wenlv
 
+![tests](https://github.com/mazihua-lgtm/wenlv/actions/workflows/test.yml/badge.svg)
+![license](https://img.shields.io/badge/license-Apache--2.0-blue)
+
 **先把事实问清，再谈法律。**
 
 一个把「不许臆造」写成代码约束的中文法律咨询引擎。
