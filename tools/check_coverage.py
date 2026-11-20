@@ -13,32 +13,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from wenlv.corpus.flk import FlkClient
 from wenlv.intake.issue_loader import load_all
-from wenlv.verify.citation import parse_basis, verify
+from wenlv.model import CaseFile
+from wenlv.verify import stage
 
 
 def main() -> int:
     client = FlkClient(timeout=30)
-    basis_list: list[str] = []
+    case = CaseFile()
     for issue in load_all():
-        for b in [*issue.basis, *(b for e in issue.elements for b in e.basis)]:
-            if b not in basis_list:
-                basis_list.append(b)
+        case.add(issue)
 
-    passed = 0
-    for b in basis_list:
-        try:
-            result = verify(parse_basis(b), client)
-        except Exception as exc:
-            print(f"  ✗ {b}  解析/核验异常: {exc}")
-            continue
+    basis_list = stage.collect_basis(case)
+    results = stage.verify_case(case, client)
+
+    for basis, result in zip(basis_list, results):
         mark = "✓" if result.safe else "✗"
-        passed += result.safe
-        print(f"  {mark} {b:16} -> {result.verdict.value:14} {result.detail}")
+        print(f"  {mark} {basis['ref']:14} -> {result.verdict.value:14} {result.detail}")
         if result.safe and result.official_text:
             print(f"      官方: {result.official_text[:60]}")
 
-    print(f"\n通过 {passed}/{len(basis_list)}")
-    return 0 if passed == len(basis_list) else 1
+    passed = sum(r.safe for r in results)
+    print(f"\n通过 {passed}/{len(results)}")
+    return 0 if stage.all_safe(results) else 1
 
 
 if __name__ == "__main__":
