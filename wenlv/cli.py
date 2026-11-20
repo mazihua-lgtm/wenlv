@@ -91,7 +91,24 @@ def ask_limitation(issue: Issue) -> lim.Assessment | None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="wenlv", description="先把事实问清，再谈法律")
+    parser = argparse.ArgumentParser(
+        prog="wenlv",
+        description=(
+            "先把事实问清，再谈法律。\n\n"
+            "说一句案情 → 匹配案由 → 逐项追问 → 事实没查清不出结论\n"
+            "→ 法条回国家法律法规数据库核验 → 算时效 → 出意见。"
+        ),
+        epilog=(
+            "示例：\n"
+            "  wenlv --describe \"朋友借钱不还，有借条\"\n"
+            "  wenlv --issue private_lending.principal\n"
+            "  wenlv --list\n\n"
+            "回答方式：以「是 / 否 / 不清楚」开头，后面可补充细节。\n"
+            "答「不清楚」会继续追问，不会被当成「否」。\n\n"
+            "退出码：0 依据成立｜2 事实不够｜3 引用核不实｜4 必备要件不成立"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("--no-verify", action="store_true", help="跳过法条核验（跳过时不出结论）")
     parser.add_argument("--issue", help="只检视指定案由，如 private_lending.principal")
     parser.add_argument("--describe", help="用一句话描述案情，自动匹配案由")
