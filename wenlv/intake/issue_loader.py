@@ -13,15 +13,22 @@ import yaml
 
 from wenlv.model import Certainty, Fact, Issue, LawyerTrigger, Limitation
 
+# 案由清单随包发布，装在 site-packages 里也能读到。
+# 曾经把它放在仓库根目录，结果 pip install（非 editable）之后
+# 程序报"没有找到检视清单"——别人根本用不起来。
+PACKAGE_ISSUES = Path(__file__).resolve().parents[1] / "issues"
+
 
 def default_dir() -> Path:
-    """找 issues 目录：环境变量 > 仓库根 > 当前目录。"""
+    """找案由清单：环境变量 > 当前目录下的 issues（且真有清单）> 包内自带。"""
     if env := os.environ.get("WENLV_ISSUES"):
         return Path(env)
-    repo = Path(__file__).resolve().parents[2] / "issues"
-    if repo.is_dir():
-        return repo
-    return Path.cwd() / "issues"
+    local = Path.cwd() / "issues"
+    # 光看目录存在不行：一个空的 issues/ 目录会把包内清单挡掉，
+    # 程序报"没有找到检视清单"，其实是自己遮住了自己。
+    if local.is_dir() and any(local.glob("*.yaml")):
+        return local
+    return PACKAGE_ISSUES
 
 
 def _basis(raw) -> dict[str, str]:

@@ -18,3 +18,6 @@ wenlv = "wenlv.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["wenlv*"]
+
+[tool.setuptools.package-data]
+"wenlv.issues" = ["*.yaml"]

@@ -38,12 +38,17 @@
 ## 快速开始
 
 ```bash
+# 方式一：直接装（推荐）
+pip install git+https://github.com/mazihua-lgtm/wenlv
+
+# 方式二：clone 下来改
 git clone https://github.com/mazihua-lgtm/wenlv
 cd wenlv
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
-wenlv
 ```
+
+装完直接敲 `wenlv`。只依赖 Python 3.10+ 和 PyYAML。
 
 一条命令跑完整流程：说案情 → 匹配案由 → 追问 → 事实闸 → 法条核验 → 时效计算 → 出意见。
 
@@ -121,7 +126,7 @@ print(r.verdict.value, r.detail)
 
 ## 加一个案由
 
-案由不用写代码，加一个 YAML 就行，落在 `issues/` 下。
+案由不用写代码，加一个 YAML 就行。自己加的放 `./issues/` 下（优先读这个目录），改内置的直接改 `wenlv/issues/`。
 
 ```yaml
 id: labor.illegal_dismissal
@@ -183,7 +188,7 @@ wenlv/
   verify/stage.py       把核验接进主流程，全过才放行结论
   report/limitation.py  时效计算：起算日 + 年数 → 截止日、剩余天数、告急判断
   report/opinion.py     出意见：结论、时效、行动清单、材料清单、律师时机、免责
-issues/                 按请求权基础组织的追问清单
+  issues/*.yaml         按请求权基础组织的追问清单（随包发布）
 tools/check_coverage.py 体检：把清单里所有引用逐条核一遍，报通过率
 tools/probe.py          写清单前用来确认条号和锚点词
 tests/                  全部离线可跑
