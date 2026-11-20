@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from wenlv.model import Fact, Issue
+from wenlv.model import Certainty, Fact, Issue, LawyerTrigger, Limitation
 
 
 def default_dir() -> Path:
@@ -35,6 +35,31 @@ def _basis(raw) -> dict[str, str]:
     }
 
 
+def _limitation(raw) -> Limitation | None:
+    if not raw:
+        return None
+    return Limitation(
+        years=int(raw.get("years", 3)),
+        fact_key=str(raw.get("fact", "limitation")).strip(),
+        start_prompt=str(raw.get("start_prompt", "")).strip(),
+        note=str(raw.get("note", "")).strip(),
+    )
+
+
+def _triggers(raw) -> list[LawyerTrigger]:
+    out: list[LawyerTrigger] = []
+    for item in raw or []:
+        status = item.get("status")
+        out.append(
+            LawyerTrigger(
+                when=str(item.get("when", "")).strip(),
+                fact_key=str(item.get("fact", "")).strip(),
+                status=Certainty(status) if status else None,
+            )
+        )
+    return out
+
+
 def load_issue(path: Path) -> Issue:
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     elements = [
@@ -44,6 +69,8 @@ def load_issue(path: Path) -> Issue:
             why=e["why"].strip(),
             basis=[_basis(b) for b in (e.get("basis") or [])],
             probe=[p.strip() for p in (e.get("probe") or [])],
+            evidence=[s.strip() for s in (e.get("evidence") or [])],
+            essential=bool(e.get("essential", True)),
         )
         for e in raw["elements"]
     ]
@@ -52,6 +79,10 @@ def load_issue(path: Path) -> Issue:
         claim=raw["claim"].strip(),
         basis=[_basis(b) for b in (raw.get("basis") or [])],
         elements=elements,
+        limitation=_limitation(raw.get("limitation")),
+        lawyer_triggers=_triggers(raw.get("lawyer")),
+        keywords=[k.strip() for k in (raw.get("keywords") or [])],
+        actions=[a.strip() for a in (raw.get("actions") or [])],
     )
 
 

@@ -79,6 +79,8 @@ class Fact:
     why: str
     basis: list[str] = field(default_factory=list)
     probe: list[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
+    essential: bool = True
     status: Certainty = Certainty.UNKNOWN
     answer: str = ""
 
@@ -89,6 +91,38 @@ class Fact:
     def record(self, status: Certainty, answer: str = "") -> None:
         self.status = status
         self.answer = answer.strip()
+
+
+@dataclass
+class Limitation:
+    """诉讼时效或仲裁时效。
+
+    起算日必须由当事人给出，程序不替他估——起算点差一个月，
+    结论就可能从"还来得及"变成"已过期"。
+    """
+
+    years: int
+    fact_key: str
+    start_prompt: str
+    note: str = ""
+
+
+@dataclass
+class LawyerTrigger:
+    """什么情况下必须找律师。条件写成对某项要件事实的回答。"""
+
+    when: str
+    fact_key: str = ""
+    status: Certainty | None = None
+
+    def matches(self, issue: "Issue") -> bool:
+        if not self.fact_key:
+            return False
+        try:
+            fact = issue.fact(self.fact_key)
+        except KeyError:
+            return False
+        return fact.settled and fact.status is self.status
 
 
 @dataclass
@@ -103,9 +137,21 @@ class Issue:
     claim: str
     basis: list[str]
     elements: list[Fact]
+    limitation: Limitation | None = None
+    lawyer_triggers: list[LawyerTrigger] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
+    actions: list[str] = field(default_factory=list)
 
     def unsettled(self) -> list[Fact]:
         return [f for f in self.elements if not f.settled]
+
+    def denials(self) -> list[Fact]:
+        """被明确否掉的必备要件。
+
+        要件不成立，请求权就不成立——这时候再核法条、再谈怎么起诉，
+        都是把人往错路上带。
+        """
+        return [f for f in self.elements if f.essential and f.status is Certainty.DENIED]
 
     @property
     def ready(self) -> bool:
