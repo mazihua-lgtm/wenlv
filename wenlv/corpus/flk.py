@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+import http.cookiejar
 import json
 import re
 import urllib.parse
@@ -23,8 +24,34 @@ _HEADERS = {
     "Content-Type": "application/json",
 }
 
+
+class _KeepMethodRedirect(urllib.request.HTTPRedirectHandler):
+    """跟随重定向时保留原方法和请求体。
+
+    官方库前置了 CDN 的 cookie 挑战：第一次 POST 回 307 并下发 wzws_cid，
+    再跳回同一路径。urllib 默认把 POST 重定向降级成 GET（还会丢 body），
+    结果就是 307 直接抛异常，整个工具全挂。
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if req.get_method() == "POST":
+            return urllib.request.Request(
+                newurl,
+                data=req.data,
+                headers=dict(req.header_items()),
+                method="POST",
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
 # 不走系统代理：官方库本身就是国内直连，串代理只会平白挂死。
-_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+# 带 cookie jar 是必须的：CDN 挑战靠它把第一跳的 cookie 带回第二跳。
+_COOKIES = http.cookiejar.CookieJar()
+_OPENER = urllib.request.build_opener(
+    urllib.request.ProxyHandler({}),
+    urllib.request.HTTPCookieProcessor(_COOKIES),
+    _KeepMethodRedirect(),
+)
 
 # 时效性编码取自官方前端：1 已废止 / 2 已修改 / 3 有效 / 4 尚未生效
 SXX_LABELS = {"1": "已废止", "2": "已修改", "3": "有效", "4": "尚未生效"}
@@ -65,8 +92,9 @@ class Source(Protocol):
 
 
 class FlkClient:
-    def __init__(self, timeout: float = 20.0):
+    def __init__(self, timeout: float = 20.0, base: str = BASE):
         self.timeout = timeout
+        self.base = base.rstrip("/")
 
     def _request(self, req: urllib.request.Request) -> dict:
         with _OPENER.open(req, timeout=self.timeout) as resp:
@@ -74,7 +102,7 @@ class FlkClient:
 
     def _post(self, path: str, payload: dict) -> dict:
         req = urllib.request.Request(
-            BASE + path,
+            self.base + path,
             data=json.dumps(payload).encode("utf-8"),
             headers=_HEADERS,
             method="POST",
@@ -82,7 +110,7 @@ class FlkClient:
         return self._request(req)
 
     def _get(self, path: str, params: dict) -> dict:
-        url = f"{BASE}{path}?{urllib.parse.urlencode(params)}"
+        url = f"{self.base}{path}?{urllib.parse.urlencode(params)}"
         return self._request(urllib.request.Request(url, headers=_HEADERS))
 
     def search_laws(self, name: str, size: int = 10) -> list[LawRecord]:
