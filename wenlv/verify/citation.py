@@ -22,6 +22,68 @@ _ARTICLE_MARK = re.compile(r"第[一二三四五六七八九十百千零]+条[\u
 
 _WS = re.compile(r"[\s\u3000]+")
 
+_DIGITS = "零一二三四五六七八九"
+_UNITS = ["", "十", "百", "千"]
+
+
+def to_chinese_number(n: int) -> str:
+    """把阿拉伯数字转成法条里的中文写法：667 -> 六百六十七。
+
+    官方正文一律用中文数字，清单里写「第667条」方便人读，
+    转换这一步是硬需求，转错了整条引用就核不上。
+    """
+    if n <= 0:
+        raise ValueError(f"条号必须是正整数：{n}")
+
+    groups: list[int] = []
+    while n:
+        groups.append(n % 10)
+        n //= 10
+    if len(groups) > 4:
+        raise ValueError("暂不支持万以上的条号")
+
+    out: list[str] = []
+    zero_pending = False
+    for pos in range(len(groups) - 1, -1, -1):
+        digit = groups[pos]
+        if digit == 0:
+            zero_pending = bool(out)
+            continue
+        if zero_pending:
+            out.append("零")
+            zero_pending = False
+        out.append(_DIGITS[digit] + _UNITS[pos])
+
+    text = "".join(out)
+    # 十一、十二 这类不写「一十」
+    return text[1:] if text.startswith("一十") else text
+
+
+_BASIS_RE = re.compile(r"^(?P<law>.*?)第(?P<num>\d+)条$")
+
+
+def parse_citation(ref: str, anchor: str = "", quote: str = "") -> Citation:
+    """解析一条引用，如「民法典第667条」或「民法典第六百六十七条」。
+
+    anchor 是条文里的特征词，用来让官方检索稳定命中——官方按条号检索
+    会漏条（命中窗口按数字切碎），按特征词检索一次就中。
+    """
+    raw = ref.strip()
+    match = _BASIS_RE.match(raw)
+    if not match:
+        raise ValueError(f"引用格式应为「法规名第N条」：{ref!r}")
+
+    law = match.group("law").strip()
+    if not law.startswith("中华人民共和国"):
+        law = "中华人民共和国" + law
+    article = f"第{to_chinese_number(int(match.group('num')))}条"
+    return Citation(law=law, article=article, anchor=anchor.strip(), text=quote.strip())
+
+
+def parse_basis(basis: str) -> Citation:
+    """兼容旧写法的简写入口。"""
+    return parse_citation(basis)
+
 
 def normalize(text: str) -> str:
     """去掉所有空白再比，避免因换行、全角空格判成不一致。"""
@@ -57,6 +119,7 @@ class Citation:
     law: str          # 如「中华人民共和国民法典」
     article: str      # 如「第六百七十五条」
     text: str = ""    # 声称的条文原文，可空
+    anchor: str = ""  # 条文特征词，用于稳定检索，可空
 
     def __str__(self) -> str:
         return f"{self.law}{self.article}"
@@ -109,10 +172,10 @@ def verify(citation: Citation, source: Source, pages: int = 2) -> Result:
             law=law,
         )
 
-    # 先用声称的原文去搜；没有原文就退回用条号搜。
-    # 用原文搜是有意的：编造的句子在官方库里根本不存在，一定会搜空。
-    queries = [citation.text.strip()] if citation.text.strip() else []
-    queries.append(citation.article)
+    # 检索顺序：特征词 > 声称的原文 > 条号。
+    # 特征词最稳；用声称的原文搜是有意的——编造的句子在官方库里根本不存在，
+    # 一定会搜空；条号兜底最弱，官方按条号检索会漏条。
+    queries = [q for q in (citation.anchor.strip(), citation.text.strip(), citation.article) if q]
 
     try:
         chunks: list[str] = []
